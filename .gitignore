@@ -2,3 +2,4 @@ cloudberry_storage_pb2.py
 cloudberry_storage_pb2.pyi
 cloudberry_storage_pb2_grpc.py
 .venv
+.idea
