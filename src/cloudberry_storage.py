@@ -4,22 +4,23 @@ from concurrent import futures
 from io import BytesIO
 
 import grpc
-import numpy as np
 # import pytesseract
-import torch
 from PIL import Image
 from deep_translator import GoogleTranslator
 from google.protobuf.internal.containers import RepeatedCompositeFieldContainer
 from grpc import ServicerContext
 # from torchvision import transforms
-from qdrant_client import QdrantClient, models
+from qdrant_client import models, QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import Distance, VectorParams
 
-import cloudberry_storage_pb2 as pb2
-import cloudberry_storage_pb2_grpc as pb2_grpc
-from cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, RemoveEntryRequest, \
-    PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
+import generated.proto.cloudberry_storage_pb2 as pb2
+import generated.proto.cloudberry_storage_pb2_grpc as pb2_grpc
+from generated.proto.cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
+    RemoveEntryRequest, PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
+from src.embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
+from src.embedders.sbert_embedder import SBERTEmbedder
+from src.model_registry import ModelRegistry
 
 # from sentence_transformers import SentenceTransformer
 # from torchvision import transforms
@@ -33,36 +34,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("CloudberryStorage")
 
 
-# Init models and Qdrant
-class ModelRegistry:
-    def __init__(self):
-        # from one_peace.models import from_pretrained
-        self.qdrant_client: QdrantClient = QdrantClient("http://localhost:6333")
-        # self.text_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        # self.one_peace = from_pretrained("/home/meno/models/one-peace.pt", device=torch.device('cpu'))
-        # self.transforms = transforms.Compose([
-        #     transforms.Resize((256, 256)),
-        #     transforms.ToTensor(),
-        #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        # ])
-
-    def vectorize_image(self, img: Image.Image):
-        tensor = self.transforms(img).unsqueeze(0).to("cpu")
-        with torch.no_grad():
-            return self.one_peace.extract_image_features(tensor).squeeze().numpy()
-
-    def vectorize_text(self, text: str):
-        return self.text_model.encode(text)
-
-    def vectorize_text_one_peace(self, text: str):
-        tokens = self.one_peace.process_text([text])
-        with torch.no_grad():
-            return self.one_peace.extract_text_features(tokens).squeeze().numpy()
-
-
-models_registry = ModelRegistry()
-
-
 def is_valid_uuid(value):
     try:
         uuid.UUID(value)
@@ -71,29 +42,31 @@ def is_valid_uuid(value):
         return False
 
 
-def create_collection_if_not_exists(collection_name: str) -> None:
-    try:
-        models_registry.qdrant_client.get_collection(collection_name)
-        logger.info(f"Коллекция {collection_name} уже существует.")
-    except Exception as e:
-        models_registry.qdrant_client.create_collection(
-            collection_name=collection_name,
-            vectors_config={
-                "one_peace_embedding": VectorParams(size=ONE_PEACE_VECTOR_SIZE, distance=Distance.COSINE),
-                "ocr_text_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
-                "description_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
-                "title_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
-            }
-        )
-        logger.info(f"Создана новая коллекция {collection_name} с несколькими векторами.")
-
-
 class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
-    def InitBucket(self, request: InitBucketRequest, context: ServicerContext) -> Empty:
-        logger.info(f"Пришёл запрос на инициализацию bucket с UUID: {request.p_bucket_uuid}.")
-        bucket_uuid: str = request.p_bucket_uuid
+    def __init__(self, registry: ModelRegistry):
+        self.models_registry: ModelRegistry = registry
+
+    def create_collection_if_not_exists(self, collection_name: str) -> None:
         try:
-            create_collection_if_not_exists(bucket_uuid)
+            self.models_registry.qdrant_client.get_collection(collection_name)
+            logger.info(f"Коллекция {collection_name} уже существует.")
+        except:
+            self.models_registry.qdrant_client.create_collection(
+                collection_name=collection_name,
+                vectors_config={
+                    "one_peace_embedding": VectorParams(size=ONE_PEACE_VECTOR_SIZE, distance=Distance.COSINE),
+                    "ocr_text_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
+                    "description_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
+                    "title_sbert_embedding": VectorParams(size=SBERT_VECTOR_SIZE, distance=Distance.COSINE),
+                }
+            )
+            logger.info(f"Создана новая коллекция {collection_name} с несколькими векторами.")
+
+    def InitBucket(self, request: InitBucketRequest, context: ServicerContext) -> Empty:
+        logger.info(f"Пришёл запрос на инициализацию bucket с UUID: {request.bucket_uuid}.")
+        bucket_uuid: str = request.bucket_uuid
+        try:
+            self.create_collection_if_not_exists(bucket_uuid)
             logger.info(f"Коллекция успешно проинициализирована.")
         except Exception as e:
             logger.error(f"Ошибка при регистрации bucket'а {bucket_uuid}: {e}", exc_info=True)
@@ -103,10 +76,10 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
         return Empty()
 
     def DestroyBucket(self, request: DestroyBucketRequest, context: ServicerContext) -> Empty:
-        logger.info(f"Запрос на уничтожение коллекции с bucket_uuid: {request.p_bucket_uuid}.")
-        bucket_uuid: str = request.p_bucket_uuid
+        logger.info(f"Запрос на уничтожение коллекции с bucket_uuid: {request.bucket_uuid}.")
+        bucket_uuid: str = request.bucket_uuid
         try:
-            models_registry.qdrant_client.get_collection(bucket_uuid)
+            self.models_registry.qdrant_client.get_collection(bucket_uuid)
             logger.info(f"Коллекция успешно найдена.")
         except UnexpectedResponse:
             context.set_code(grpc.StatusCode.NOT_FOUND)
@@ -115,7 +88,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             return pb2.Empty()
 
         try:
-            models_registry.qdrant_client.delete_collection(bucket_uuid)
+            self.models_registry.qdrant_client.delete_collection(bucket_uuid)
             print(f"Deleted collection for bucket: {bucket_uuid}")
             logger.info(f"Коллекция успешно удалена.")
         except Exception as e:
@@ -141,10 +114,11 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
                 "description": description,
             }
 
-            # title_vec = models_registry.sbert.encode(title).tolist()
-            title_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
+            title_vec = self.models_registry.text_embedder.encode(title).tolist()
+            # title_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
             # desc_vec = models_registry.sbert.encode(description).tolist()
-            desc_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
+            # desc_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
+            desc_vec = self.models_registry.text_embedder.encode(description).tolist()
 
             # --- Точка: title ---
             points.append(models.PointStruct(
@@ -165,16 +139,17 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             # --- Точки: изображения ---
             for idx, img in enumerate(attachments):
                 image = Image.open(BytesIO(img.content)).convert("RGB")
-                # image_vec = models_registry.vectorize_image(image).tolist()
-                image_vec = np.ones(ONE_PEACE_VECTOR_SIZE).tolist()
+                image_vec = self.models_registry.one_peace_embedder.encode_image(image).tolist()
+                # image_vec = np.ones(ONE_PEACE_VECTOR_SIZE).tolist()
 
                 # ocr_text = pytesseract.image_to_string(image, lang='eng+rus').strip()
                 ocr_text = "HELLO! Это распознанный текст"
-                ocr_vec = (
-                    # models_registry.sbert.encode(ocr_text).tolist()
-                    np.ones(SBERT_VECTOR_SIZE).tolist()
-                    if ocr_text else np.zeros(SBERT_VECTOR_SIZE).tolist()
-                )
+                ocr_vec = self.models_registry.text_embedder.encode(ocr_text).tolist()
+                # ocr_vec = (
+                #     # models_registry.sbert.encode(ocr_text).tolist()
+                #     np.ones(SBERT_VECTOR_SIZE).tolist()
+                #     if ocr_text else np.zeros(SBERT_VECTOR_SIZE).tolist()
+                # )
 
                 point = models.PointStruct(
                     id=str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{external_id}_img_{idx}")),
@@ -193,7 +168,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
                 logger.info(f"Точка с ID {external_id}_img_{idx} добавлена в коллекцию {bucket_uuid}.")
 
             # --- Вставка в Qdrant ---
-            models_registry.qdrant_client.upsert(collection_name=bucket_uuid, points=points)
+            self.models_registry.qdrant_client.upsert(collection_name=bucket_uuid, points=points)
             logger.info(f"Тикет {external_id} добавлен в {bucket_uuid}: {len(points)} точек.")
 
         except Exception as e:
@@ -208,7 +183,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
         bucket_uuid: str = request.bucket_uuid
         external_ticket_id: str = request.external_ticket_id
         try:
-            models_registry.qdrant_client.delete(
+            self.models_registry.qdrant_client.delete(
                 collection_name=bucket_uuid,
                 points_selector=models.FilterSelector(
                     filter=models.Filter(
@@ -239,14 +214,14 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             translated_query = GoogleTranslator(source='auto', target='en').translate(text_query)
 
             # Текстовые вектора
-            text_vec = models_registry.text_model.encode(translated_query)
-            one_peace_text_vec = models_registry.vectorize_text_one_peace(translated_query)
+            text_vec = self.models_registry.text_model.encode(translated_query)
+            one_peace_text_vec = self.models_registry.one_peace_embedder.encode_text(translated_query)
 
             # Вектора изображений (по каждому отдельно)
             image_vectors = []
             for img in images:
                 pil = Image.open(BytesIO(img.content)).convert("RGB")
-                image_vectors.append(models_registry.vectorize_image(pil))
+                image_vectors.append(self.models_registry.one_peace_embedder.encode_image(pil))
 
             # === 2. Поиск по каждому модальному вектору ===
             aggregated_scores = {}
@@ -262,7 +237,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
                     aggregated_scores[ticket_id] += score
 
             # Поиск по тексту (sbert)
-            res = models_registry.qdrant_client.query_points(
+            res = self.models_registry.qdrant_client.query_points(
                 collection_name=bucket_uuid,
                 query_vector=text_vec.tolist(),
                 limit=top_k,
@@ -274,7 +249,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
 
             # Поиск по каждому изображению
             for idx, vec in enumerate(image_vectors):
-                res = models_registry.qdrant_client.query_points(
+                res = self.models_registry.qdrant_client.query_points(
                     collection_name=bucket_uuid,
                     query_vector=vec.tolist(),
                     limit=top_k,
@@ -303,7 +278,12 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    pb2_grpc.add_CloudberryStorageServicer_to_server(CloudberryStorage(), server)
+    registry: ModelRegistry = ModelRegistry(
+        text_embedder=SBERTEmbedder(),
+        one_peace_embedder=OnePeaceMultimodalEmbedder(),
+        qdrant_client=QdrantClient("http://localhost:6333")
+    )
+    pb2_grpc.add_CloudberryStorageServicer_to_server(CloudberryStorage(registry), server)
     server.add_insecure_port("[::]:50051")
     server.start()
     server.wait_for_termination()

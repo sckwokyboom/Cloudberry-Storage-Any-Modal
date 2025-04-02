@@ -56,11 +56,11 @@ message FindResponseEntry {
 
 
 message InitBucketRequest {
-  string p_bucket_uuid = 1;
+  string bucket_uuid = 1;
 }
 
 message DestroyBucketRequest {
-  string p_bucket_uuid = 1;
+  string bucket_uuid = 1;
 }
 
 message RemoveEntryRequest {
