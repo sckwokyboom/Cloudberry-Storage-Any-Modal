@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package cloudberry;
+
+service CloudberryStorage {
+  rpc PutEntry (PutEntryRequest) returns (Empty);
+  rpc RemoveEntry (RemoveEntryRequest) returns (Empty);
+  rpc Find (FindRequest) returns (FindResponse);
+  rpc InitBucket (InitBucketRequest) returns (Empty);
+  rpc DestroyBucket (DestroyBucketRequest) returns (Empty);
+}
+
+message PutEntryRequest {
+  string external_ticket_id = 1;
+  string bucket_uuid = 2;
+  TicketEntry ticket = 3;
+}
+
+message TicketEntry {
+  TextEntry title = 3;
+  TextEntry description = 4;
+  repeated ImageEntry attachments = 5;
+//  repeated TextEntry threads = 6;
+}
+
+message TextEntry {
+  string content = 1;
+}
+
+message ImageEntry {
+  bytes content = 1;
+  ImageContentType content_type = 2;
+}
+
+enum ImageContentType {
+  JPEG = 0;
+  PNG = 1;
+}
+
+// Find
+message FindRequest {
+  // 1 Резерв.
+  TextEntry query = 2;
+  repeated ImageEntry images = 3;
+  string bucket_uuid = 4;
+  int32 top_k = 5;
+}
+
+message FindResponse {
+  repeated FindResponseEntry entries = 1;
+}
+
+message FindResponseEntry {
+  string external_id = 1;
+}
+
+
+message InitBucketRequest {
+  string p_bucket_uuid = 1;
+}
+
+message DestroyBucketRequest {
+  string p_bucket_uuid = 1;
+}
+
+message RemoveEntryRequest {
+  string external_ticket_id = 1;
+  string bucket_uuid = 2;
+}
+
+message Empty {}
