@@ -14,8 +14,8 @@ from qdrant_client import models, QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import Distance, VectorParams
 
-import generated.proto.cloudberry_storage_pb2 as pb2
-import generated.proto.cloudberry_storage_pb2_grpc as pb2_grpc
+from generated.proto import cloudberry_storage_pb2 as pb2
+from generated.proto import cloudberry_storage_pb2_grpc as pb2_grpc
 from generated.proto.cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
     RemoveEntryRequest, PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
 from src.embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
