@@ -8,7 +8,7 @@ def main():
         "--python_out=src/generated",
         "--pyi_out=src/generated",
         "--grpc_python_out=src/generated",
-        "proto/cloudberry_storage.proto"
+        "cloudberry_storage.proto"
     ], check=True)
 
 
