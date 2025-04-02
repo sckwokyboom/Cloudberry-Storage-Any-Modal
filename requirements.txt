@@ -1,6 +1,6 @@
 grpcio
 grpcio-tools
-protobuf
+protobuf<4
 numpy
 pillow
 torch
