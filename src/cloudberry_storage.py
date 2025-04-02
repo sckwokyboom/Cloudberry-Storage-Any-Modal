@@ -4,26 +4,26 @@ from concurrent import futures
 from io import BytesIO
 
 import grpc
-# import pytesseract
+import pytesseract
 from PIL import Image
 from deep_translator import GoogleTranslator
 from google.protobuf.internal.containers import RepeatedCompositeFieldContainer
 from grpc import ServicerContext
-# from torchvision import transforms
+from torchvision import transforms
 from qdrant_client import models, QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import Distance, VectorParams
 
-from generated import cloudberry_storage_pb2 as pb2
-from generated import cloudberry_storage_pb2_grpc as pb2_grpc
+import generated.cloudberry_storage_pb2 as pb2
+import generated.cloudberry_storage_pb2_grpc as pb2_grpc
 from generated.cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
     RemoveEntryRequest, PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
 from src.embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
 from src.embedders.sbert_embedder import SBERTEmbedder
 from src.model_registry import ModelRegistry
 
-# from sentence_transformers import SentenceTransformer
-# from torchvision import transforms
+from sentence_transformers import SentenceTransformer
+from torchvision import transforms
 
 # Constants
 ONE_PEACE_VECTOR_SIZE = 1536
