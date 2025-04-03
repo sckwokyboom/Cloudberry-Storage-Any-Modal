@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 
-from src.embedders.interfaces import TextEmbedder
-from src.embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
+from embedders.interfaces import TextEmbedder
+from embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
 
 
 class ModelRegistry:
