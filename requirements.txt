@@ -2,10 +2,10 @@ grpcio
 grpcio-tools
 protobuf<4
 numpy
-pillow
-torch
-torchvision
+pillow~=10.4.0
+torch~=2.5.1
+torchvision~=0.20.1
 sentence-transformers
 qdrant-client
-pytesseract
+pytesseract~=0.3.13
 deep-translator
