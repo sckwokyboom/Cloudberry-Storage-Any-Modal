@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package generated;
+
+service OnePeaceEmbedder {
+  rpc EncodeText(TextRequest) returns (VectorResponse);
+  rpc EncodeImage(ImageRequest) returns (VectorResponse);
+  rpc EncodeAudio(AudioRequest) returns (VectorResponse);
+}
+
+message TextRequest {
+  string text = 1;
+}
+
+message ImageRequest {
+  bytes content = 1;
+}
+
+message AudioRequest {
+  bytes content = 1;
+  int32 sample_rate = 2;
+}
+
+message VectorResponse {
+  repeated float vector = 1;
+}
