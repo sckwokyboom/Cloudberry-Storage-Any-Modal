@@ -8,7 +8,7 @@ def main():
         "--python_out=src/generated",
         "--pyi_out=src/generated",
         "--grpc_python_out=src/generated",
-        "proto/cloudberry_storage.proto"
+        "cloudberry_storage.proto"
     ], check=True)
     subprocess.run([
         "python3", "-m", "grpc_tools.protoc",
@@ -16,7 +16,7 @@ def main():
         "--python_out=src/generated",
         "--pyi_out=src/generated",
         "--grpc_python_out=src/generated",
-        "proto/one_peace_service.proto"
+        "one_peace_service.proto"
     ], check=True)
 
 
