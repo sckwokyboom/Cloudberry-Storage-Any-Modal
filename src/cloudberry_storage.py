@@ -285,7 +285,7 @@ def serve():
         qdrant_client=QdrantClient("http://localhost:6333")
     )
     pb2_grpc.add_CloudberryStorageServicer_to_server(CloudberryStorage(registry), server)
-    server.add_insecure_port("[::]:50051")
+    server.add_insecure_port("[::]:8001")
     server.start()
     server.wait_for_termination()
 
