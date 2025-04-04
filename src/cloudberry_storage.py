@@ -17,8 +17,8 @@ from qdrant_client.models import Distance, VectorParams
 from embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
 from embedders.sbert_embedder import SBERTEmbedder
 from model_registry import ModelRegistry
-import generated.cloudberry_storage_pb2 as pb2
-import generated.cloudberry_storage_pb2_grpc as pb2_grpc
+import cloudberry_storage_pb2 as pb2
+import cloudberry_storage_pb2_grpc as pb2_grpc
 from generated.cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
     RemoveEntryRequest, PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
 
