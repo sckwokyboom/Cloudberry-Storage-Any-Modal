@@ -24,7 +24,7 @@ from cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empt
 from sentence_transformers import SentenceTransformer
 from torchvision import transforms
 
-from src.embedders.one_peace_client import OnePeaceClient
+from embedders.one_peace_client import OnePeaceClient
 
 # Constants
 ONE_PEACE_VECTOR_SIZE = 1536
