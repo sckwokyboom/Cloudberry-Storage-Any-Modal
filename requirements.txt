@@ -9,3 +9,4 @@ sentence-transformers
 qdrant-client
 pytesseract~=0.3.13
 deep-translator
+soundfile
