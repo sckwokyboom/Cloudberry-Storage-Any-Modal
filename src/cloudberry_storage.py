@@ -14,16 +14,17 @@ from qdrant_client import models, QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import Distance, VectorParams
 
-from embedders.one_peace_embedder import OnePeaceMultimodalEmbedder
 from embedders.sbert_embedder import SBERTEmbedder
 from model_registry import ModelRegistry
 import cloudberry_storage_pb2 as pb2
 import cloudberry_storage_pb2_grpc as pb2_grpc
-from generated.cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
+from cloudberry_storage_pb2 import InitBucketRequest, DestroyBucketRequest, Empty, FindRequest, \
     RemoveEntryRequest, PutEntryRequest, ImageEntry, FindResponse, FindResponseEntry
 
 from sentence_transformers import SentenceTransformer
 from torchvision import transforms
+
+from src.embedders.one_peace_client import OnePeaceClient
 
 # Constants
 ONE_PEACE_VECTOR_SIZE = 1536
@@ -114,11 +115,11 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
                 "description": description,
             }
 
-            title_vec = self.models_registry.text_embedder.encode(title).tolist()
+            title_vec = self.models_registry.text_embedder.encode_text(title).tolist()
             # title_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
             # desc_vec = models_registry.sbert.encode(description).tolist()
             # desc_vec = np.ones(SBERT_VECTOR_SIZE).tolist()
-            desc_vec = self.models_registry.text_embedder.encode(description).tolist()
+            desc_vec = self.models_registry.text_embedder.encode_text(description).tolist()
 
             # --- Точка: title ---
             points.append(models.PointStruct(
@@ -138,8 +139,8 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
 
             # --- Точки: изображения ---
             for idx, img in enumerate(attachments):
-                image = Image.open(BytesIO(img.content)).convert("RGB")
-                image_vec = self.models_registry.one_peace_embedder.encode_image(image).tolist()
+                image: Image = Image.open(BytesIO(img.content)).convert("RGB")
+                image_vec = self.models_registry.one_peace_client.encode_image(image).tolist()
                 # image_vec = np.ones(ONE_PEACE_VECTOR_SIZE).tolist()
 
                 # ocr_text = pytesseract.image_to_string(image, lang='eng+rus').strip()
@@ -214,14 +215,14 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             translated_query = GoogleTranslator(source='auto', target='en').translate(text_query)
 
             # Текстовые вектора
-            text_vec = self.models_registry.text_model.encode(translated_query)
-            one_peace_text_vec = self.models_registry.one_peace_embedder.encode_text(translated_query)
+            text_vec = self.models_registry.text_embedder.encode_text(translated_query)
+            one_peace_text_vec = self.models_registry.one_peace_client.encode_text(translated_query)
 
             # Вектора изображений (по каждому отдельно)
             image_vectors = []
             for img in images:
                 pil = Image.open(BytesIO(img.content)).convert("RGB")
-                image_vectors.append(self.models_registry.one_peace_embedder.encode_image(pil))
+                image_vectors.append(self.models_registry.one_peace_client.encode_image(pil))
 
             # === 2. Поиск по каждому модальному вектору ===
             aggregated_scores = {}
@@ -280,7 +281,7 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     registry: ModelRegistry = ModelRegistry(
         text_embedder=SBERTEmbedder(),
-        one_peace_embedder=OnePeaceMultimodalEmbedder(),
+        one_peace_client=OnePeaceClient(),
         qdrant_client=QdrantClient("http://localhost:6333")
     )
     pb2_grpc.add_CloudberryStorageServicer_to_server(CloudberryStorage(registry), server)

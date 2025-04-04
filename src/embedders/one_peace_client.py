@@ -3,6 +3,7 @@ import argparse
 import grpc
 import one_peace_service_pb2 as pb2
 import one_peace_service_pb2_grpc as pb2_grpc
+from PIL.Image import Image
 
 
 class OnePeaceClient:
@@ -15,10 +16,8 @@ class OnePeaceClient:
         response = self.stub.EncodeText(request)
         return list(response.vector)
 
-    def encode_image(self, image_path: str):
-        with open(image_path, "rb") as f:
-            content = f.read()
-        request = pb2.ImageRequest(content=content)
+    def encode_image(self, image: Image):
+        request = pb2.ImageRequest(content=image.tobytes())
         response = self.stub.EncodeImage(request)
         return list(response.vector)
 
