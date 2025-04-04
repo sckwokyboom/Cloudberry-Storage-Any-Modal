@@ -2,8 +2,6 @@ syntax = "proto3";
 
 package cloudberry;
 
-option python_package = "cloudberry";
-
 service CloudberryStorage {
   rpc PutEntry (PutEntryRequest) returns (Empty);
   rpc RemoveEntry (RemoveEntryRequest) returns (Empty);
