@@ -240,7 +240,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             # Поиск по тексту (sbert)
             res = self.models_registry.qdrant_client.query_points(
                 collection_name=bucket_uuid,
-                query_vector=text_vec.tolist(),
+                query=text_vec.tolist(),
                 limit=top_k,
                 with_payload=True,
                 with_vectors=False,
@@ -252,7 +252,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             for idx, vec in enumerate(image_vectors):
                 res = self.models_registry.qdrant_client.query_points(
                     collection_name=bucket_uuid,
-                    query_vector=vec.tolist(),
+                    query=vec.tolist(),
                     limit=top_k,
                     with_payload=True,
                     with_vectors=False,
