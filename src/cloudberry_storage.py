@@ -140,7 +140,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             # --- Точки: изображения ---
             for idx, img in enumerate(attachments):
                 image: Image = Image.open(BytesIO(img.content)).convert("RGB")
-                image_vec = self.models_registry.one_peace_client.encode_image(image)
+                image_vec = self.models_registry.one_peace_client.encode_image(image, img.content_type)
                 # image_vec = np.ones(ONE_PEACE_VECTOR_SIZE).tolist()
 
                 # ocr_text = pytesseract.image_to_string(image, lang='eng+rus').strip()
@@ -222,7 +222,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
             image_vectors = []
             for img in images:
                 pil = Image.open(BytesIO(img.content)).convert("RGB")
-                image_vectors.append(self.models_registry.one_peace_client.encode_image(pil))
+                image_vectors.append(self.models_registry.one_peace_client.encode_image(pil, img.content_type))
 
             # === 2. Поиск по каждому модальному вектору ===
             aggregated_scores = {}
