@@ -7,7 +7,7 @@ from PIL.Image import Image
 import soundfile as sf
 from io import BytesIO
 
-from src.cloudberry_storage_pb2 import ImageContentType
+from cloudberry_storage_pb2 import ImageContentType
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("OnePeaceClient")
