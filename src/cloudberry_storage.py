@@ -145,7 +145,7 @@ class CloudberryStorage(pb2_grpc.CloudberryStorageServicer):
 
                 # ocr_text = pytesseract.image_to_string(image, lang='eng+rus').strip()
                 ocr_text = "HELLO! Это распознанный текст"
-                ocr_vec = self.models_registry.text_embedder.encode(ocr_text).tolist()
+                ocr_vec = self.models_registry.text_embedder.encode_text(ocr_text).tolist()
                 # ocr_vec = (
                 #     # models_registry.sbert.encode(ocr_text).tolist()
                 #     np.ones(SBERT_VECTOR_SIZE).tolist()
