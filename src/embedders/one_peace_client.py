@@ -5,6 +5,9 @@ import one_peace_service_pb2 as pb2
 import one_peace_service_pb2_grpc as pb2_grpc
 from PIL.Image import Image
 import soundfile as sf
+from io import BytesIO
+
+from src.cloudberry_storage_pb2 import ImageContentType
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("OnePeaceClient")
@@ -35,10 +38,22 @@ class OnePeaceClient:
             logger.exception(f"Непредвиденная ошибка при вызове EncodeText: {e}")
         return []
 
-    def encode_image(self, image: Image):
+    def encode_image(self, image: Image, content_type: ImageContentType):
         logger.info(f"Получено изображение для эмбеддинга. Размер: {image.size}, формат: {image.mode}")
         try:
-            image_bytes = image.tobytes()
+            if content_type == ImageContentType.PNG:
+                format_str = "PNG"
+            elif content_type == ImageContentType.JPEG:
+                format_str = "JPEG"
+            else:
+                raise ValueError(f"Неподдерживаемый формат изображения: {content_type}")
+
+            buffer = BytesIO()
+            image.save(buffer, format=format_str)
+            image_bytes = buffer.getvalue()
+
+            logger.info(f"Изображение сериализовано в формате {format_str}, размер {len(image_bytes)} байт")
+
             request = pb2.ImageRequest(content=image_bytes)
             response = self.stub.EncodeImage(request)
             logger.info(f"Эмбеддинг изображения успешно получен. Размер вектора: {len(response.vector)}")
